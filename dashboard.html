@@ -125,6 +125,59 @@
             border-radius: 10px;
             margin-left: 6px;
         }
+        .tab .tab-close {
+            display: inline-block;
+            margin-left: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+            line-height: 16px;
+            text-align: center;
+            border-radius: 50%;
+            transition: all .15s;
+        }
+        .tab .tab-close:hover { background: #fee2e2; color: #dc2626; }
+        .tab-add {
+            padding: 10px 14px;
+            font-size: 18px;
+            font-weight: 400;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin-bottom: -2px;
+            transition: all .15s;
+            line-height: 1;
+        }
+        .tab-add:hover { color: var(--breeze-blue); }
+
+        /* Add tab modal */
+        .add-tab-form {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 12px 0;
+        }
+        .add-tab-form input {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            width: 200px;
+        }
+        .add-tab-form input:focus { outline: none; border-color: var(--breeze-blue); }
+        .color-options { display: flex; gap: 6px; align-items: center; }
+        .color-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all .15s;
+        }
+        .color-dot:hover, .color-dot.selected { border-color: var(--text); transform: scale(1.15); }
 
         /* Filters */
         .filters {
@@ -530,14 +583,44 @@
 
 <!-- Tabs -->
 <div class="tabs-container">
-    <div class="tabs">
-        <button class="tab active" data-tab="all">All Sources <span class="badge">1,247</span></button>
-        <button class="tab" data-tab="skytrax">Skytrax <span class="badge">312</span></button>
-        <button class="tab" data-tab="trustpilot">Trustpilot <span class="badge">198</span></button>
-        <button class="tab" data-tab="google">Google <span class="badge">425</span></button>
-        <button class="tab" data-tab="tripadvisor">TripAdvisor <span class="badge">87</span></button>
-        <button class="tab" data-tab="reddit">Reddit <span class="badge">156</span></button>
-        <button class="tab" data-tab="twitter">X / Twitter <span class="badge">69</span></button>
+    <div class="tabs" id="tabsBar"></div>
+</div>
+
+<!-- Add Tab Modal -->
+<div class="modal-overlay" id="addTabModal">
+    <div class="modal" style="width:400px;">
+        <h3>➕ Add New Source Tab</h3>
+        <label>Source Name</label>
+        <input type="text" id="newTabName" placeholder="e.g. Yelp, Facebook, App Store...">
+        <label>Tab Color</label>
+        <div class="color-options" id="colorOptions">
+            <div class="color-dot selected" data-color="#3b82f6" style="background:#3b82f6;"></div>
+            <div class="color-dot" data-color="#10b981" style="background:#10b981;"></div>
+            <div class="color-dot" data-color="#f59e0b" style="background:#f59e0b;"></div>
+            <div class="color-dot" data-color="#ef4444" style="background:#ef4444;"></div>
+            <div class="color-dot" data-color="#8b5cf6" style="background:#8b5cf6;"></div>
+            <div class="color-dot" data-color="#ec4899" style="background:#ec4899;"></div>
+            <div class="color-dot" data-color="#6366f1" style="background:#6366f1;"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn" onclick="closeAddTabModal()">Cancel</button>
+            <button class="btn primary" onclick="addNewTab()">Add Tab</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Tab Confirmation Modal -->
+<div class="modal-overlay" id="deleteTabModal">
+    <div class="modal" style="width:400px;">
+        <h3>🗑️ Remove Source Tab</h3>
+        <div class="delete-confirm">
+            <p>Remove the <strong id="deleteTabName"></strong> tab? Reviews from this source will still appear under All Sources.</p>
+        </div>
+        <input type="hidden" id="deleteTabId">
+        <div class="modal-actions">
+            <button class="btn" onclick="closeDeleteTabModal()">Cancel</button>
+            <button class="btn danger" onclick="confirmDeleteTab()">Remove Tab</button>
+        </div>
     </div>
 </div>
 
@@ -794,8 +877,9 @@ function concernsHTML(arr) {
 }
 
 function sourceHTML(s) {
-    const labels = { skytrax: "Skytrax", trustpilot: "Trustpilot", google: "Google", tripadvisor: "TripAdvisor", reddit: "Reddit", twitter: "X / Twitter" };
-    return `<span class="source-badge ${s}">${labels[s]}</span>`;
+    const tab = sourceTabs.find(t => t.id === s);
+    const label = tab ? tab.label : s;
+    return `<span class="source-badge ${s}">${label}</span>`;
 }
 
 // Emoji icons
@@ -926,16 +1010,102 @@ function saveReply(idx) {
     applyFilters();
 }
 
-// Tab switching
+// Dynamic tabs
+const sourceTabs = [
+    { id: 'all', label: 'All Sources', permanent: true },
+    { id: 'skytrax', label: 'Skytrax', color: '#1e40af', permanent: false },
+    { id: 'trustpilot', label: 'Trustpilot', color: '#065f46', permanent: false },
+    { id: 'google', label: 'Google', color: '#92400e', permanent: false },
+    { id: 'tripadvisor', label: 'TripAdvisor', color: '#9d174d', permanent: false },
+    { id: 'reddit', label: 'Reddit', color: '#991b1b', permanent: false },
+    { id: 'twitter', label: 'X / Twitter', color: '#3730a3', permanent: false },
+];
+
 let activeSource = 'all';
-document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        activeSource = tab.dataset.tab;
-        applyFilters();
-    });
+
+function renderTabs() {
+    const bar = document.getElementById('tabsBar');
+    bar.innerHTML = sourceTabs.map(t => {
+        const count = t.id === 'all' ? reviews.length : reviews.filter(r => r.source === t.id).length;
+        const isActive = activeSource === t.id ? ' active' : '';
+        const closeBtn = t.permanent ? '' : `<span class="tab-close" onclick="event.stopPropagation(); openDeleteTabModal('${t.id}')">&times;</span>`;
+        return `<button class="tab${isActive}" data-tab="${t.id}" onclick="switchTab('${t.id}')">${t.label} <span class="badge">${count}</span>${closeBtn}</button>`;
+    }).join('') + `<button class="tab-add" title="Add source tab" onclick="openAddTabModal()">+</button>`;
+}
+
+function switchTab(id) {
+    activeSource = id;
+    renderTabs();
+    applyFilters();
+}
+
+// Add tab modal
+let selectedColor = '#3b82f6';
+
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('color-dot')) {
+        document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+        e.target.classList.add('selected');
+        selectedColor = e.target.dataset.color;
+    }
 });
+
+function openAddTabModal() {
+    document.getElementById('newTabName').value = '';
+    document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+    document.querySelector('.color-dot').classList.add('selected');
+    selectedColor = '#3b82f6';
+    document.getElementById('addTabModal').classList.add('open');
+    setTimeout(() => document.getElementById('newTabName').focus(), 100);
+}
+
+function closeAddTabModal() {
+    document.getElementById('addTabModal').classList.remove('open');
+}
+
+function addNewTab() {
+    const name = document.getElementById('newTabName').value.trim();
+    if (!name) return;
+    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    if (sourceTabs.find(t => t.id === id)) {
+        alert('A tab with that name already exists.');
+        return;
+    }
+    sourceTabs.push({ id, label: name, color: selectedColor, permanent: false });
+
+    // Add dynamic style for the new source badge
+    const style = document.createElement('style');
+    style.textContent = `.source-badge.${id} { background: ${selectedColor}22; color: ${selectedColor}; }`;
+    document.head.appendChild(style);
+
+    closeAddTabModal();
+    renderTabs();
+}
+
+// Delete tab modal
+function openDeleteTabModal(id) {
+    const tab = sourceTabs.find(t => t.id === id);
+    document.getElementById('deleteTabName').textContent = tab.label;
+    document.getElementById('deleteTabId').value = id;
+    document.getElementById('deleteTabModal').classList.add('open');
+}
+
+function closeDeleteTabModal() {
+    document.getElementById('deleteTabModal').classList.remove('open');
+}
+
+function confirmDeleteTab() {
+    const id = document.getElementById('deleteTabId').value;
+    const idx = sourceTabs.findIndex(t => t.id === id);
+    if (idx > -1) sourceTabs.splice(idx, 1);
+    if (activeSource === id) activeSource = 'all';
+    closeDeleteTabModal();
+    renderTabs();
+    applyFilters();
+}
+
+// Initial tab render
+renderTabs();
 
 // Filtering
 function applyFilters() {
