@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breeze Airways — Review Dashboard</title>
+    <style>
+        :root {
+            --breeze-blue: #0057b8;
+            --breeze-light: #e8f0fe;
+            --breeze-dark: #003d82;
+            --positive: #22c55e;
+            --neutral: #f59e0b;
+            --negative: #ef4444;
+            --bg: #f5f7fa;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--breeze-blue), var(--breeze-dark));
+            color: #fff;
+            padding: 24px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,.15);
+        }
+        .header h1 { font-size: 24px; font-weight: 700; letter-spacing: -.5px; }
+        .header h1 span { font-weight: 300; opacity: .85; }
+        .header-meta { font-size: 13px; opacity: .8; }
+
+        /* Summary cards */
+        .summary-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            padding: 24px 32px 0;
+        }
+        .summary-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+        }
+        .summary-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin-bottom: 4px; }
+        .summary-card .value { font-size: 28px; font-weight: 700; }
+        .summary-card .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .value.positive { color: var(--positive); }
+        .value.neutral  { color: var(--neutral); }
+        .value.negative { color: var(--negative); }
+        .value.blue     { color: var(--breeze-blue); }
+
+        /* Status row */
+        .status-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            padding: 16px 32px 0;
+        }
+        .status-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 14px 18px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 3px solid var(--border);
+        }
+        .status-card.replied   { border-left-color: var(--positive); }
+        .status-card.needs     { border-left-color: var(--negative); }
+        .status-card.recent    { border-left-color: var(--breeze-blue); }
+        .status-card.older     { border-left-color: var(--neutral); }
+        .status-card.negative-flag { border-left-color: #dc2626; }
+        .status-card .status-icon { font-size: 22px; }
+        .status-card .status-info { flex: 1; }
+        .status-card .status-info .status-val { font-size: 20px; font-weight: 700; }
+        .status-card .status-info .status-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
+
+        /* Tabs */
+        .tabs-container { padding: 24px 32px 0; }
+        .tabs {
+            display: flex;
+            gap: 4px;
+            border-bottom: 2px solid var(--border);
+        }
+        .tab {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all .15s;
+        }
+        .tab:hover { color: var(--breeze-blue); }
+        .tab.active {
+            color: var(--breeze-blue);
+            border-bottom-color: var(--breeze-blue);
+            font-weight: 600;
+        }
+        .tab .badge {
+            display: inline-block;
+            background: var(--breeze-light);
+            color: var(--breeze-blue);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 1px 7px;
+            border-radius: 10px;
+            margin-left: 6px;
+        }
+
+        /* Filters */
+        .filters {
+            padding: 16px 32px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filter-group { display: flex; align-items: center; gap: 6px; }
+        .filter-group label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
+        .filter-group select, .filter-group input {
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            background: #fff;
+            color: var(--text);
+        }
+        .search-box {
+            margin-left: auto;
+            position: relative;
+        }
+        .search-box input {
+            padding: 6px 10px 6px 30px;
+            width: 220px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .search-box::before {
+            content: "\1F50D";
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 13px;
+        }
+
+        /* Review table */
+        .table-wrap {
+            padding: 0 32px 32px;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+        }
+        thead th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: var(--text-muted);
+            background: #fafbfc;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        tbody td {
+            padding: 14px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: #f8fafc; }
+
+        .comment-cell {
+            max-width: 420px;
+            line-height: 1.55;
+        }
+        .comment-cell .excerpt {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .comment-cell .read-more {
+            color: var(--breeze-blue);
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 4px;
+            display: inline-block;
+        }
+
+        /* Sentiment badge */
+        .sentiment {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .sentiment.positive { background: #dcfce7; color: #166534; }
+        .sentiment.neutral  { background: #fef3c7; color: #92400e; }
+        .sentiment.negative { background: #fee2e2; color: #991b1b; }
+        .sentiment.mixed    { background: #ede9fe; color: #5b21b6; }
+
+        .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+        .dot.positive { background: var(--positive); }
+        .dot.neutral  { background: var(--neutral); }
+        .dot.negative { background: var(--negative); }
+        .dot.mixed    { background: #8b5cf6; }
+
+        /* Concern tag */
+        .concern {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--breeze-light);
+            color: var(--breeze-blue);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            margin: 1px 2px;
+        }
+
+        /* Rating stars */
+        .stars { color: #f59e0b; font-size: 13px; letter-spacing: 1px; white-space: nowrap; }
+
+        /* Source badge */
+        .source-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .source-badge.skytrax  { background: #dbeafe; color: #1e40af; }
+        .source-badge.trustpilot { background: #d1fae5; color: #065f46; }
+        .source-badge.google   { background: #fef3c7; color: #92400e; }
+        .source-badge.tripadvisor { background: #fce7f3; color: #9d174d; }
+        .source-badge.reddit   { background: #fee2e2; color: #991b1b; }
+        .source-badge.twitter  { background: #e0e7ff; color: #3730a3; }
+
+        .date-cell { white-space: nowrap; font-size: 12px; color: var(--text-muted); }
+
+        /* Tab content */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Trend bar (mini chart) */
+        .trend-bar {
+            display: flex;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            width: 120px;
+            margin-top: 6px;
+        }
+        .trend-bar .seg { height: 100%; }
+        .trend-bar .seg.positive { background: var(--positive); }
+        .trend-bar .seg.neutral  { background: var(--neutral); }
+        .trend-bar .seg.negative { background: var(--negative); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header { padding: 16px; }
+            .summary-row, .tabs-container, .filters, .table-wrap { padding-left: 16px; padding-right: 16px; }
+            .filters { flex-direction: column; align-items: flex-start; }
+            .search-box { margin-left: 0; }
+        }
+
+        /* Expanded row */
+        .expanded-comment {
+            display: none;
+            padding: 12px 16px;
+            background: #f8fafc;
+            font-size: 13px;
+            line-height: 1.6;
+            border-bottom: 1px solid var(--border);
+        }
+        .expanded-comment.open { display: table-row; }
+
+        /* Actions column */
+        .actions-cell {
+            white-space: nowrap;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .action-btn {
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #fff;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .15s;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .action-btn:hover { background: var(--breeze-light); color: var(--breeze-blue); border-color: var(--breeze-blue); }
+        .action-btn.delete:hover { background: #fee2e2; color: #dc2626; border-color: #dc2626; }
+        .action-btn.reply:hover { background: #dcfce7; color: #16a34a; border-color: #16a34a; }
+        .action-btn { font-size: 16px; color: unset; }
+
+        /* Edit modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.4);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            width: 520px;
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,.2);
+        }
+        .modal h3 { font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .modal label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 4px; margin-top: 12px; }
+        .modal textarea, .modal select, .modal input[type="date"] {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--text);
+            resize: vertical;
+        }
+        .modal textarea { min-height: 80px; }
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text);
+            transition: all .15s;
+        }
+        .btn:hover { background: #f1f5f9; }
+        .btn.primary { background: var(--breeze-blue); color: #fff; border-color: var(--breeze-blue); }
+        .btn.primary:hover { background: var(--breeze-dark); }
+        .btn.danger { background: #dc2626; color: #fff; border-color: #dc2626; }
+        .btn.danger:hover { background: #b91c1c; }
+
+        /* Reply draft panel (inline under row) */
+        .reply-row td {
+            padding: 0 !important;
+            border-bottom: 1px solid var(--border);
+        }
+        .reply-panel {
+            background: #f0fdf4;
+            padding: 16px 20px;
+            border-left: 3px solid var(--positive);
+        }
+        .reply-panel .reply-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #16a34a;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .reply-panel textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #bbf7d0;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--text);
+            resize: vertical;
+            min-height: 70px;
+            background: #fff;
+        }
+        .reply-panel textarea:focus { outline: none; border-color: #16a34a; }
+        .reply-panel .reply-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+        .reply-panel .reply-actions .btn { font-size: 12px; padding: 6px 12px; }
+
+        /* Delete confirmation */
+        .delete-confirm {
+            text-align: center;
+            padding: 8px 0;
+        }
+        .delete-confirm p { font-size: 14px; margin-bottom: 16px; color: var(--text); }
+        .delete-confirm .preview { font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 6px; margin-bottom: 16px; max-height: 60px; overflow: hidden; }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <h1>Breeze Airways <span>Review Dashboard</span></h1>
+    </div>
+    <div class="header-meta">Last updated: March 30, 2026</div>
+</div>
+
+<!-- Summary Cards -->
+<div class="summary-row" id="summaryRow">
+    <div class="summary-card">
+        <div class="label">Total Reviews</div>
+        <div class="value">1,247</div>
+        <div class="sub">Across all sources</div>
+    </div>
+    <div class="summary-card">
+        <div class="label">Avg Rating</div>
+        <div class="value">3.6 / 5</div>
+        <div class="trend-bar">
+            <div class="seg positive" style="width:48%"></div>
+            <div class="seg neutral" style="width:22%"></div>
+            <div class="seg negative" style="width:30%"></div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="label">Positive</div>
+        <div class="value positive">48%</div>
+        <div class="sub">599 reviews</div>
+    </div>
+    <div class="summary-card">
+        <div class="label">Neutral</div>
+        <div class="value neutral">22%</div>
+        <div class="sub">274 reviews</div>
+    </div>
+    <div class="summary-card">
+        <div class="label">Negative</div>
+        <div class="value negative">30%</div>
+        <div class="sub">374 reviews</div>
+    </div>
+</div>
+
+<!-- Status Row -->
+<div class="status-row" id="statusRow">
+    <div class="status-card replied">
+        <div class="status-icon">✅</div>
+        <div class="status-info">
+            <div class="status-val" id="statReplied">0</div>
+            <div class="status-label">Replied</div>
+        </div>
+    </div>
+    <div class="status-card needs">
+        <div class="status-icon">⏳</div>
+        <div class="status-info">
+            <div class="status-val" id="statNeedsReply">0</div>
+            <div class="status-label">Need a Reply</div>
+        </div>
+    </div>
+    <div class="status-card negative-flag">
+        <div class="status-icon">🚨</div>
+        <div class="status-info">
+            <div class="status-val" id="statNegNoReply">0</div>
+            <div class="status-label">Negative &mdash; No Reply</div>
+        </div>
+    </div>
+    <div class="status-card recent">
+        <div class="status-icon">🆕</div>
+        <div class="status-info">
+            <div class="status-val" id="statUnder30">0</div>
+            <div class="status-label">Under 30 Days Old</div>
+        </div>
+    </div>
+    <div class="status-card older">
+        <div class="status-icon">📁</div>
+        <div class="status-info">
+            <div class="status-val" id="statOver30">0</div>
+            <div class="status-label">Over 30 Days Old</div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs-container">
+    <div class="tabs">
+        <button class="tab active" data-tab="all">All Sources <span class="badge">1,247</span></button>
+        <button class="tab" data-tab="skytrax">Skytrax <span class="badge">312</span></button>
+        <button class="tab" data-tab="trustpilot">Trustpilot <span class="badge">198</span></button>
+        <button class="tab" data-tab="google">Google <span class="badge">425</span></button>
+        <button class="tab" data-tab="tripadvisor">TripAdvisor <span class="badge">87</span></button>
+        <button class="tab" data-tab="reddit">Reddit <span class="badge">156</span></button>
+        <button class="tab" data-tab="twitter">X / Twitter <span class="badge">69</span></button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+    <div class="filter-group">
+        <label>Sentiment</label>
+        <select id="filterSentiment">
+            <option value="all">All</option>
+            <option value="positive">Positive</option>
+            <option value="neutral">Neutral</option>
+            <option value="negative">Negative</option>
+            <option value="mixed">Mixed</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Concern</label>
+        <select id="filterConcern">
+            <option value="all">All</option>
+            <option value="delays">Delays / Cancellations</option>
+            <option value="pricing">Pricing / Fees</option>
+            <option value="comfort">Seat Comfort</option>
+            <option value="service">Customer Service</option>
+            <option value="baggage">Baggage</option>
+            <option value="booking">Booking Experience</option>
+            <option value="wifi">WiFi / Entertainment</option>
+            <option value="crew">Crew / Staff</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Date</label>
+        <select id="filterDate">
+            <option value="all">All Time</option>
+            <option value="7d">Last 7 Days</option>
+            <option value="30d">Last 30 Days</option>
+            <option value="90d">Last 90 Days</option>
+            <option value="1y">Last Year</option>
+        </select>
+    </div>
+    <div class="search-box">
+        <input type="text" placeholder="Search reviews..." id="searchInput">
+    </div>
+</div>
+
+<!-- Review Table -->
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Source</th>
+                <th>Date</th>
+                <th>Rating</th>
+                <th>Comment</th>
+                <th>Sentiment</th>
+                <th>Main Concerns</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="reviewsBody"></tbody>
+    </table>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit Review Notes
+        </h3>
+        <input type="hidden" id="editIndex">
+        <label>Internal Notes</label>
+        <textarea id="editNotes" placeholder="Add internal notes about this review..."></textarea>
+        <label>Sentiment Override</label>
+        <select id="editSentiment">
+            <option value="">Keep Original</option>
+            <option value="positive">Positive</option>
+            <option value="neutral">Neutral</option>
+            <option value="negative">Negative</option>
+            <option value="mixed">Mixed</option>
+        </select>
+        <label>Priority Flag</label>
+        <select id="editPriority">
+            <option value="">None</option>
+            <option value="high">High — Needs immediate response</option>
+            <option value="medium">Medium — Follow up soon</option>
+            <option value="low">Low — Monitor</option>
+        </select>
+        <div class="modal-actions">
+            <button class="btn" onclick="closeEditModal()">Cancel</button>
+            <button class="btn primary" onclick="saveEdit()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal" style="width:400px;">
+        <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            Remove Review
+        </h3>
+        <div class="delete-confirm">
+            <div class="preview" id="deletePreview"></div>
+            <p>Hide this review from the dashboard? You can undo this action.</p>
+        </div>
+        <input type="hidden" id="deleteIndex">
+        <div class="modal-actions">
+            <button class="btn" onclick="closeDeleteModal()">Cancel</button>
+            <button class="btn danger" onclick="confirmDelete()">Remove</button>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    Breeze Airways Review Dashboard &mdash; Internal Use Only
+</div>
+
+<script>
+// Sample review data
+const reviews = [
+    {
+        source: "skytrax", date: "2026-03-28", rating: 5,
+        comment: "First time flying Breeze from Hartford to Charleston. Check-in was seamless through the app. The crew was incredibly friendly and the seat pitch was surprisingly generous for a budget carrier. Landed early. Would absolutely fly again.",
+        sentiment: "positive",
+        concerns: ["crew", "comfort"]
+    },
+    {
+        source: "skytrax", date: "2026-03-25", rating: 2,
+        comment: "Flight was delayed 3 hours with no real communication. When we finally boarded, no apology from staff. Seats were fine but the delay ruined our connection. Customer service line had a 45-minute wait. Disappointing for what they charge.",
+        sentiment: "negative",
+        concerns: ["delays", "service"]
+    },
+    {
+        source: "trustpilot", date: "2026-03-22", rating: 4,
+        comment: "Very affordable fare from Providence to Tampa. Appreciated the ability to pick seats without an outrageous upcharge. Only knock is the WiFi was spotty for most of the flight. Will likely book again for leisure trips.",
+        sentiment: "positive",
+        concerns: ["pricing", "wifi"]
+    },
+    {
+        source: "google", date: "2026-03-20", rating: 1,
+        comment: "Booked a flight that was cancelled day-of with zero notice. Rebooked me on a flight 26 hours later. No hotel voucher, no meal credit. When I called to complain, the agent was rude and unhelpful. Never again.",
+        sentiment: "negative",
+        concerns: ["delays", "service"]
+    },
+    {
+        source: "google", date: "2026-03-18", rating: 3,
+        comment: "Middle of the road experience. Price was right, boarding was orderly, flight was on time. But the seats are narrow and there's no entertainment. You get what you pay for. Fine for a short hop, wouldn't want a 3+ hour flight.",
+        sentiment: "neutral",
+        concerns: ["comfort", "wifi"]
+    },
+    {
+        source: "tripadvisor", date: "2026-03-15", rating: 4,
+        comment: "Flew Breeze BDL-MCO roundtrip for a family vacation. Great value. Kids loved the tablet holders on the Nice seats. Crew was cheerful and helpful with our car seat. One bag fee was reasonable. Smooth experience overall.",
+        sentiment: "positive",
+        concerns: ["crew", "pricing"]
+    },
+    {
+        source: "reddit", date: "2026-03-14", rating: 3,
+        comment: "Honestly mixed feelings. The fare was unbeatable but they nickle-and-dime you for everything. Carry-on fee, seat selection fee, even water costs money. If you go in knowing it's bare bones you'll be fine. Just don't expect Southwest vibes.",
+        sentiment: "mixed",
+        concerns: ["pricing", "baggage"]
+    },
+    {
+        source: "skytrax", date: "2026-03-12", rating: 5,
+        comment: "This is how budget airlines should operate. Clean planes, on-time departure, friendly crew, and fares that actually make flying accessible. Flew out of an underserved airport too which saved me a 2-hour drive. Breeze is doing it right.",
+        sentiment: "positive",
+        concerns: ["crew"]
+    },
+    {
+        source: "twitter", date: "2026-03-11", rating: 2,
+        comment: "Lost my checked bag on a BDL to SAV flight. Took 4 days to get it back and the app tracking was useless. No one could give me a straight answer. Fix your baggage handling @BreezeAirways.",
+        sentiment: "negative",
+        concerns: ["baggage", "service"]
+    },
+    {
+        source: "google", date: "2026-03-10", rating: 4,
+        comment: "Booking through the app was easy and intuitive. Liked the transparent pricing breakdown showing exactly what each add-on costs. Flight was on time, crew was pleasant. Would recommend to friends looking for budget options in the Northeast.",
+        sentiment: "positive",
+        concerns: ["booking", "crew"]
+    },
+    {
+        source: "trustpilot", date: "2026-03-08", rating: 1,
+        comment: "Tried to change my flight and got hit with a $100 change fee on a $79 ticket. That's more than the fare! Their 'flexibility' is a joke. Called customer service three times and got three different answers. Terrible policies.",
+        sentiment: "negative",
+        concerns: ["pricing", "service"]
+    },
+    {
+        source: "reddit", date: "2026-03-06", rating: 4,
+        comment: "Flew Nice class on the E195 and it was genuinely comfortable. 2x2 config, decent legroom, free snacks and drinks. For the price difference it's absolutely worth the upgrade. The regular seats are tight though, would not recommend for tall people.",
+        sentiment: "positive",
+        concerns: ["comfort"]
+    },
+    {
+        source: "skytrax", date: "2026-03-04", rating: 3,
+        comment: "The concept is great — point to point from smaller airports. But execution is inconsistent. Two of my four flights were delayed. When it works, it's wonderful. When it doesn't, the lack of a robust rebooking network really hurts.",
+        sentiment: "mixed",
+        concerns: ["delays"]
+    },
+    {
+        source: "google", date: "2026-03-02", rating: 5,
+        comment: "Cannot say enough good things about the crew on my ISP to TPA flight. The flight attendant noticed my daughter was nervous and spent time talking to her and even brought her a wing pin. Small gestures but they made our day. Thank you Breeze!",
+        sentiment: "positive",
+        concerns: ["crew"]
+    },
+    {
+        source: "tripadvisor", date: "2026-02-28", rating: 2,
+        comment: "Website is clunky and the app crashed twice during booking. Ended up being double charged and had to spend an hour on the phone getting a refund. The actual flight was fine but the booking experience left a bad taste.",
+        sentiment: "negative",
+        concerns: ["booking", "service"]
+    },
+    {
+        source: "twitter", date: "2026-02-25", rating: 4,
+        comment: "Shoutout to @BreezeAirways for adding the RIC-LAX route. Finally a nonstop option that doesn't cost a fortune. Flew it last week and it was solid. Keep expanding!",
+        sentiment: "positive",
+        concerns: []
+    },
+    {
+        source: "trustpilot", date: "2026-02-20", rating: 3,
+        comment: "Decent enough airline for the price. My main gripe is the lack of overhead bin space. If you're not in the first boarding group, good luck finding room. They need to enforce the carry-on size limits better.",
+        sentiment: "neutral",
+        concerns: ["baggage"]
+    },
+    {
+        source: "skytrax", date: "2026-02-18", rating: 4,
+        comment: "Flew from Norfolk to Las Vegas via Breeze's new nonstop. Excellent value in Nicest class — lie-flat on an A220 is something else. Food was basic but serviceable. Would choose this over connecting through a major hub any day.",
+        sentiment: "positive",
+        concerns: ["comfort", "pricing"]
+    },
+];
+
+const concernLabels = {
+    delays: "Delays / Cancellations",
+    pricing: "Pricing / Fees",
+    comfort: "Seat Comfort",
+    service: "Customer Service",
+    baggage: "Baggage",
+    booking: "Booking Experience",
+    wifi: "WiFi / Entertainment",
+    crew: "Crew / Staff"
+};
+
+function starsHTML(rating) {
+    return '<span class="stars">' + '★'.repeat(rating) + '☆'.repeat(5 - rating) + '</span>';
+}
+
+function sentimentHTML(s) {
+    const labels = { positive: "Positive", neutral: "Neutral", negative: "Negative", mixed: "Mixed" };
+    return `<span class="sentiment ${s}"><span class="dot ${s}"></span>${labels[s]}</span>`;
+}
+
+function concernsHTML(arr) {
+    if (!arr.length) return '<span style="color:var(--text-muted);font-size:12px;">—</span>';
+    return arr.map(c => `<span class="concern">${concernLabels[c] || c}</span>`).join(' ');
+}
+
+function sourceHTML(s) {
+    const labels = { skytrax: "Skytrax", trustpilot: "Trustpilot", google: "Google", tripadvisor: "TripAdvisor", reddit: "Reddit", twitter: "X / Twitter" };
+    return `<span class="source-badge ${s}">${labels[s]}</span>`;
+}
+
+// Emoji icons
+const iconEdit = `\u270F\uFE0F`;
+const iconDelete = `\uD83D\uDDD1\uFE0F`;
+const iconReply = `\uD83D\uDCAC`;
+
+// Track open reply panels and drafts
+let openReplyIndex = null;
+const replyDrafts = {};
+
+function actionsHTML(reviewIdx) {
+    return `<div class="actions-cell">
+        <button class="action-btn reply" title="Draft reply" onclick="toggleReply(${reviewIdx})">${iconReply}</button>
+        <button class="action-btn edit" title="Edit notes" onclick="openEditModal(${reviewIdx})">${iconEdit}</button>
+        <button class="action-btn delete" title="Remove review" onclick="openDeleteModal(${reviewIdx})">${iconDelete}</button>
+    </div>`;
+}
+
+function replyRowHTML(reviewIdx) {
+    const isOpen = openReplyIndex === reviewIdx;
+    const draft = replyDrafts[reviewIdx] || '';
+    if (!isOpen) return '';
+    return `<tr class="reply-row">
+        <td colspan="7">
+            <div class="reply-panel">
+                <div class="reply-header">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Draft Reply
+                </div>
+                <textarea id="replyText-${reviewIdx}" placeholder="Write a draft response to this review..." oninput="replyDrafts[${reviewIdx}]=this.value">${draft}</textarea>
+                <div class="reply-actions">
+                    <button class="btn" onclick="toggleReply(${reviewIdx})">Cancel</button>
+                    <button class="btn" onclick="copyReply(${reviewIdx})" style="color:var(--breeze-blue);">Copy to Clipboard</button>
+                    <button class="btn primary" onclick="saveReply(${reviewIdx})">Save Draft</button>
+                </div>
+            </div>
+        </td>
+    </tr>`;
+}
+
+function renderReviews(filtered) {
+    const tbody = document.getElementById('reviewsBody');
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">No reviews match your filters.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = filtered.map((r, i) => {
+        const realIdx = reviews.indexOf(r);
+        const notesTag = r._notes ? `<span class="concern" style="background:#fef3c7;color:#92400e;margin-top:4px;display:inline-block;">Has notes</span>` : '';
+        const draftTag = replyDrafts[realIdx] ? `<span class="concern" style="background:#dcfce7;color:#166534;margin-top:4px;display:inline-block;">Draft saved</span>` : '';
+        return `<tr>
+            <td>${sourceHTML(r.source)}</td>
+            <td class="date-cell">${new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+            <td>${starsHTML(r.rating)}</td>
+            <td class="comment-cell">
+                <div class="excerpt">${r.comment}</div>
+                ${notesTag} ${draftTag}
+            </td>
+            <td>${sentimentHTML(r.sentiment)}</td>
+            <td>${concernsHTML(r.concerns)}</td>
+            <td>${actionsHTML(realIdx)}</td>
+        </tr>
+        ${replyRowHTML(realIdx)}`;
+    }).join('');
+}
+
+// --- Edit Modal ---
+function openEditModal(idx) {
+    document.getElementById('editIndex').value = idx;
+    document.getElementById('editNotes').value = reviews[idx]._notes || '';
+    document.getElementById('editSentiment').value = reviews[idx]._sentimentOverride || '';
+    document.getElementById('editPriority').value = reviews[idx]._priority || '';
+    document.getElementById('editModal').classList.add('open');
+}
+function closeEditModal() {
+    document.getElementById('editModal').classList.remove('open');
+}
+function saveEdit() {
+    const idx = parseInt(document.getElementById('editIndex').value);
+    reviews[idx]._notes = document.getElementById('editNotes').value;
+    const sentOverride = document.getElementById('editSentiment').value;
+    if (sentOverride) {
+        reviews[idx]._sentimentOverride = sentOverride;
+        reviews[idx].sentiment = sentOverride;
+    }
+    reviews[idx]._priority = document.getElementById('editPriority').value;
+    closeEditModal();
+    applyFilters();
+}
+
+// --- Delete Modal ---
+function openDeleteModal(idx) {
+    document.getElementById('deleteIndex').value = idx;
+    document.getElementById('deletePreview').textContent = reviews[idx].comment.substring(0, 120) + '...';
+    document.getElementById('deleteModal').classList.add('open');
+}
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('open');
+}
+function confirmDelete() {
+    const idx = parseInt(document.getElementById('deleteIndex').value);
+    reviews.splice(idx, 1);
+    closeDeleteModal();
+    applyFilters();
+}
+
+// --- Reply Draft ---
+function toggleReply(idx) {
+    if (openReplyIndex === idx) {
+        openReplyIndex = null;
+    } else {
+        openReplyIndex = idx;
+    }
+    applyFilters();
+}
+function copyReply(idx) {
+    const text = document.getElementById(`replyText-${idx}`).value;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy to Clipboard'; }, 1500);
+    });
+}
+function saveReply(idx) {
+    replyDrafts[idx] = document.getElementById(`replyText-${idx}`).value;
+    openReplyIndex = null;
+    applyFilters();
+}
+
+// Tab switching
+let activeSource = 'all';
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        activeSource = tab.dataset.tab;
+        applyFilters();
+    });
+});
+
+// Filtering
+function applyFilters() {
+    let filtered = [...reviews];
+
+    if (activeSource !== 'all') {
+        filtered = filtered.filter(r => r.source === activeSource);
+    }
+
+    const sentiment = document.getElementById('filterSentiment').value;
+    if (sentiment !== 'all') {
+        filtered = filtered.filter(r => r.sentiment === sentiment);
+    }
+
+    const concern = document.getElementById('filterConcern').value;
+    if (concern !== 'all') {
+        filtered = filtered.filter(r => r.concerns.includes(concern));
+    }
+
+    const dateVal = document.getElementById('filterDate').value;
+    if (dateVal !== 'all') {
+        const now = new Date();
+        const days = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 }[dateVal];
+        const cutoff = new Date(now.getTime() - days * 86400000);
+        filtered = filtered.filter(r => new Date(r.date) >= cutoff);
+    }
+
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    if (search) {
+        filtered = filtered.filter(r => r.comment.toLowerCase().includes(search));
+    }
+
+    renderReviews(filtered);
+    updateStatusRow();
+}
+
+document.getElementById('filterSentiment').addEventListener('change', applyFilters);
+document.getElementById('filterConcern').addEventListener('change', applyFilters);
+document.getElementById('filterDate').addEventListener('change', applyFilters);
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+
+// Update status row counts
+function updateStatusRow() {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+
+    const replied = reviews.filter(r => replyDrafts[reviews.indexOf(r)]).length;
+    const needsReply = reviews.length - replied;
+    const negNoReply = reviews.filter(r => r.sentiment === 'negative' && !replyDrafts[reviews.indexOf(r)]).length;
+    const under30 = reviews.filter(r => new Date(r.date) >= thirtyDaysAgo).length;
+    const over30 = reviews.filter(r => new Date(r.date) < thirtyDaysAgo).length;
+
+    document.getElementById('statReplied').textContent = replied;
+    document.getElementById('statNeedsReply').textContent = needsReply;
+    document.getElementById('statNegNoReply').textContent = negNoReply;
+    document.getElementById('statUnder30').textContent = under30;
+    document.getElementById('statOver30').textContent = over30;
+}
+
+// Initial render
+renderReviews(reviews);
+updateStatusRow();
+</script>
+</body>
+</html>
